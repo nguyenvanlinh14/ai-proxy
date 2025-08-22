@@ -7,38 +7,44 @@ export default async function handler(request, response) {
   }
 
   try {
-    // Lấy câu hỏi của người dùng từ request gửi đến
+    // Lấy câu hỏi từ request
     const userPrompt = request.body.prompt;
 
     if (!userPrompt) {
       return response.status(400).json({ error: 'Prompt is required' });
     }
 
-    // Lấy API Key từ biến môi trường một cách AN TOÀN
-    const apiKey = process.env.OPENAI_API_KEY;
+    // Lấy API Key từ biến môi trường
+    const apiKey = process.env.GOOGLE_API_KEY;
 
-    // Gọi đến API của OpenAI
-    const openaiResponse = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}` // Sử dụng API Key ở đây
-      },
-      body: JSON.stringify({
-        model: "gpt-3.5-turbo", // Hoặc một model khác
-        messages: [{ role: "user", content: userPrompt }],
-        temperature: 0.7,
-      }),
-    });
+    // Gọi đến Google Gemini API
+    const geminiResponse = await fetch(
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-goog-api-key': apiKey, // Google yêu cầu header này
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [{ text: userPrompt }],
+            },
+          ],
+        }),
+      }
+    );
 
-    const data = await openaiResponse.json();
+    const data = await geminiResponse.json();
 
-    // Lấy câu trả lời từ AI và gửi về cho Google Sites
-    const aiMessage = data.choices[0].message.content;
+    // Lấy câu trả lời từ AI (Google Gemini format)
+    const aiMessage =
+      data.candidates?.[0]?.content?.parts?.[0]?.text || 'No response';
+
     response.status(200).json({ reply: aiMessage });
-
   } catch (error) {
-    console.error('Error calling OpenAI API:', error);
+    console.error('Error calling Gemini API:', error);
     response.status(500).json({ error: 'Something went wrong' });
   }
 }
