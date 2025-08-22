@@ -17,25 +17,28 @@ export default async function handler(request, response) {
   }
 
   try {
-    // Extract input fields from request body
-    const { job_description, candidate_cv } = request.body;
+    // Extract free text input from request body
+    const { input_text } = request.body;
 
-    if (!job_description) {
-      return response.status(400).json({ 
-        error: 'job_description is required.' 
+    if (!input_text || input_text.trim() === '') {
+      return response.status(400).json({
+        error: 'input_text is required.',
       });
     }
 
-    // Build strict prompt to limit chatbot response
+    // Build strict system prompt
     const systemPrompt = `
 You are an interview assistant agent. 
 Your role is strictly limited to generating interview questions only. 
 You should never provide answers, explanations, or any other text outside of the required JSON format. 
 All questions must be usable in a real interview session. 
 
-Inputs:
-- job_description (JD): A text describing the job. It can be detailed or very vague.
-- candidate_cv (optional): Extracted text content from the candidate's CV. If missing, base questions only on the JD.
+Task:
+- The user will provide any free text input.
+- Determine if the text is more likely a Job Description (JD) or a Candidate CV.
+- If JD: generate interview questions relevant to the job description.
+- If CV: generate interview questions relevant to the candidate's background and experiences.
+- If it's ambiguous, assume it is a JD.
 
 Output:
 Return a JSON array called "expected_questions".
@@ -52,8 +55,7 @@ Rules:
 - Do not output anything except the JSON structure above.
 - Always ensure at least 5 diverse questions are generated.
 - Categories must be distributed (not all from the same category).
-- If job_description is vague, generate more generic but still relevant questions.
-- If candidate_cv is missing or null, skip it and rely solely on job_description.
+- If input_text is vague, generate more generic but still relevant questions.
 - Remember: you are only generating interview questions for an interview session.
 
 Note for interviewer:
@@ -63,15 +65,11 @@ Note for interviewer:
     // Get API Key from environment variable
     const apiKey = process.env.GOOGLE_API_KEY;
 
-    // Prepare request contents for Gemini
+    // Prepare request contents
     const contents = [
       { parts: [{ text: systemPrompt }] },
-      { parts: [{ text: `Job Description:\n${job_description}` }] }
+      { parts: [{ text: `User Input:\n${input_text}` }] },
     ];
-
-    if (candidate_cv && candidate_cv.trim() !== '') {
-      contents.push({ parts: [{ text: `Candidate CV:\n${candidate_cv}` }] });
-    }
 
     // Call Google Gemini API
     const geminiResponse = await fetch(
@@ -105,6 +103,9 @@ Note for interviewer:
     response.status(200).json({ reply: aiMessage });
   } catch (error) {
     console.error('Error in proxy:', error);
-    response.status(500).json({ error: 'An unexpected error occurred. Check server logs.' });
+    response.status(500).json({
+      error: 'An unexpected error occurred.',
+      details: error.message,
+    });
   }
 }
