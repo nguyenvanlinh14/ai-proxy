@@ -110,13 +110,19 @@ ${input_text}
 
     const data = await geminiResponse.json();
 
-    const aiMessage =
+     const aiMessage =
       data.candidates?.[0]?.content?.parts?.[0]?.text || 'No response';
 
-    // The model should be instructed to return a JSON string, so we try to parse it.
-    // This adds robustness in case the model deviates from the instruction.
+    let cleanMessage = aiMessage.trim();
+    if (cleanMessage.startsWith('```json')) {
+      cleanMessage = cleanMessage.substring(
+        cleanMessage.indexOf('\n') + 1,
+        cleanMessage.lastIndexOf('```')
+      ).trim();
+    }
+
     try {
-      const parsedJson = JSON.parse(aiMessage);
+      const parsedJson = JSON.parse(cleanMessage);
       response.status(200).json(parsedJson);
     } catch (parseError) {
       console.error('Failed to parse AI response as JSON:', parseError);
