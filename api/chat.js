@@ -28,41 +28,52 @@ export default async function handler(request, response) {
       });
     }
 
-    // Build combined prompt
+    // Build combined prompt (accept any input)
     const combinedPrompt = `
 You are an interview assistant agent. 
-Your task is to generate interview questions for a given job.
+Your role is strictly limited to generating interview questions only. 
 
-Rules:
-1. The user may input any free text related to a job.
-2. If the input includes both job position and seniority level (e.g., "Frontend Engineer - Junior"), 
-   generate a list of interview questions relevant to that role.
-3. If either job position or seniority is missing, do not generate questions. 
-   Instead, return a JSON response asking the user to clarify what is missing.
+Input Handling:
+- The user may provide any kind of text: job description, candidate CV, job title only (e.g., "Frontend Junior"), or vague/general text. 
+- Always try to interpret the input to determine if it represents:
+  (a) Job Description (JD),
+  (b) Candidate CV,
+  (c) Job position & seniority only,
+  (d) Ambiguous text.
+
+Behavior:
+1. If job position AND seniority level are clearly mentioned (e.g., "Frontend Engineer - Junior"), generate a set of relevant interview questions.
+2. If job position or level is missing, return a JSON asking the user to provide the missing info (e.g., "Please provide the seniority level").
+3. If input is a JD → generate questions targeting required skills and responsibilities.
+4. If input is a CV → generate questions targeting candidate’s skills and past experiences.
+5. If input is too vague or unrelated to jobs, return a JSON asking for clarification.
 
 Expected Output:
-Always return a JSON array called "expected_questions".
-- If you have enough info: generate at least 5 interview questions, each with:
+Always return ONLY a JSON array named "expected_questions".
+- If enough info is available:
+  Generate at least 5 diverse interview questions. Each must have:
   {
     "question_text": "Write the interview question here",
     "category": "TECHNICAL_CORE | TECHNICAL_ADJACENT | BEHAVIORAL | SITUATIONAL | CULTURE_FIT",
     "skill_tags": ["Relevant skills here"]
   }
-- If missing info: return a JSON array with a single object:
+- If missing info:
+  Return exactly one object:
   {
-    "question_text": "Please provide [missing info: position or level]",
+    "question_text": "Please provide [missing info: position, level, or more job details]",
     "category": "INFO_REQUEST",
     "skill_tags": []
   }
 
-Remember:
+⚠️ Rules:
 - Do not output anything except the JSON array.
-- Questions must be diverse (not all same category).
-- This is for an interview session only.
+- Questions must always be suitable for real interviews.
+- Categories must be varied (not all same type).
+- If vague input: ask for clarification instead of guessing.
 
 User Input:
 ${input_text}
-    `;
+`;
 
     const apiKey = process.env.GOOGLE_API_KEY;
 
