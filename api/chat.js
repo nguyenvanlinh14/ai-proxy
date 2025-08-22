@@ -28,51 +28,35 @@ export default async function handler(request, response) {
       });
     }
 
-    // Build combined prompt (accept any input)
+    // Build combined prompt (friendly text output)
     const combinedPrompt = `
-You are a specialized and helpful interview question generator.
-Your sole purpose is to analyze user input and generate a list of relevant interview questions in a specific JSON format.
-Your role is to act as a logic-based parser and generator, following all rules meticulously.
+You are a helpful interview assistant agent. 
+Your only task is to generate interview questions for the user in a **clear and friendly text format**.
 
 Input Handling:
-- The user may provide various types of input related to a job role: a full Job Description (JD), a candidate's CV, a job title and seniority level (e.g., "Frontend Junior"), or an ambiguous text.
-- Your task is to interpret the input to determine the most effective way to generate questions.
+- The user may provide any kind of input: a job description (JD), a candidate CV, a job title and seniority (e.g., "Frontend Junior"), or even vague/general text.
+- Always try to interpret the input:
+  (a) Job Description (JD),
+  (b) Candidate CV,
+  (c) Job position & seniority only,
+  (d) Ambiguous text.
 
-Behavior & Logic:
-1.  **Job Position & Level:** If the input clearly specifies both a job position AND seniority level (e.g., "Backend Engineer - Senior"), generate a set of relevant interview questions based on your expertise.
-2.  **Job Description (JD):** If the input is a Job Description, generate questions that directly target the skills, responsibilities, and qualifications mentioned in the JD.
-3.  **Candidate CV:** If the input is a Candidate CV, generate questions that explore the candidate's skills, past projects, and experiences detailed in the CV.
-4.  **Missing Info:** If the input is a job position without a clear seniority level (e.g., "Data Scientist") or a seniority level without a position, you must explicitly ask the user for the missing information.
-5.  **Vague/Unrelated Input:** If the input is too vague, generic, or not related to a job role (e.g., "hello there", "what is the weather?"), you must ask for clarification about what job role they need questions for.
+Behavior:
+1. If job position AND seniority are clearly mentioned → generate a list of relevant interview questions.
+2. If it's a JD → generate questions targeting skills, responsibilities, and requirements.
+3. If it's a CV → generate questions targeting candidate’s skills and past projects.
+4. If job position or seniority is missing → politely ask the user for the missing info.
+5. If input is vague/unrelated → politely ask the user to clarify.
 
 Expected Output:
-Always return ONLY a JSON array named "expected_questions". The JSON must be valid and well-formed.
+- Always respond in **plain text, easy-to-read, user-friendly format**.
+- Use bullet points or numbered lists for questions.
+- Group questions by category if possible (Technical, Behavioral, Situational, Culture Fit).
+- If missing info → ask in a friendly way what info is needed.
 
-- **If enough info is available (cases 1, 2, 3):**
-  Generate at least 5 diverse interview questions. Each question must be an object with the following structure:
-  \`\`\`json
-  {
-    "question_text": "Write the interview question here",
-    "category": "TECHNICAL_CORE | TECHNICAL_ADJACENT | BEHAVIORAL | SITUATIONAL | CULTURE_FIT",
-    "skill_tags": ["Relevant skills here"]
-  }
-  \`\`\`
-
-- **If info is missing or input is vague (cases 4, 5):**
-  Return a single object indicating the need for more information.
-  \`\`\`json
-  {
-    "question_text": "Please provide [missing info: position, level, or more job details].",
-    "category": "INFO_REQUEST",
-    "skill_tags": []
-  }
-  \`\`\`
-
-⚠️ Strict Rules:
-- **DO NOT** output any text or markdown outside of the JSON array. Your response must be **only** the JSON.
-- Questions generated must be suitable for real interviews.
-- Ensure the categories of questions are varied.
-- If the input is unclear, you must ask for more information instead of making assumptions.
+⚠️ Rules:
+- Do NOT output JSON or code.
+- Always sound professional, supportive, and clear.
 
 User Input:
 ${input_text}
@@ -110,28 +94,11 @@ ${input_text}
 
     const data = await geminiResponse.json();
 
-     const aiMessage =
+    // Friendly AI reply (plain text)
+    const aiMessage =
       data.candidates?.[0]?.content?.parts?.[0]?.text || 'No response';
 
-    let cleanMessage = aiMessage.trim();
-    if (cleanMessage.startsWith('```json')) {
-      cleanMessage = cleanMessage.substring(
-        cleanMessage.indexOf('\n') + 1,
-        cleanMessage.lastIndexOf('```')
-      ).trim();
-    }
-
-    try {
-      const parsedJson = JSON.parse(cleanMessage);
-      response.status(200).json(parsedJson);
-    } catch (parseError) {
-      console.error('Failed to parse AI response as JSON:', parseError);
-      response.status(500).json({
-        error: 'Failed to parse AI response as JSON.',
-        details: aiMessage,
-      });
-    }
-
+    response.status(200).json({ reply: aiMessage });
   } catch (error) {
     console.error('Error in proxy:', error);
     response.status(500).json({
