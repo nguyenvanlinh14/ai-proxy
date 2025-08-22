@@ -18,7 +18,7 @@ export default async function handler(request, response) {
     const apiKey = process.env.OPENAI_API_KEY;
 
     // Gọi đến API của OpenAI
-    const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+    const openaiResponse = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
