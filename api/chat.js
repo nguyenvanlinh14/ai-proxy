@@ -1,6 +1,16 @@
 // File: api/chat.js
 
 export default async function handler(request, response) {
+  // Thêm các headers CORS để cho phép Google Sites gọi API này
+  response.setHeader('Access-Control-Allow-Origin', '*'); // Cho phép mọi domain
+  response.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
+  response.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  // Xử lý yêu cầu preflight (OPTIONS)
+  if (request.method === 'OPTIONS') {
+    return response.status(200).end();
+  }
+
   // Chỉ cho phép phương thức POST
   if (request.method !== 'POST') {
     return response.status(405).json({ message: 'Method Not Allowed' });
@@ -36,6 +46,16 @@ export default async function handler(request, response) {
       }
     );
 
+    // Kiểm tra lỗi từ API của Google
+    if (!geminiResponse.ok) {
+        const errorData = await geminiResponse.json();
+        console.error('Gemini API returned an error:', errorData);
+        return response.status(geminiResponse.status).json({ 
+          error: 'Lỗi từ Gemini API', 
+          details: errorData.error?.message || 'Không có chi tiết lỗi' 
+        });
+    }
+
     const data = await geminiResponse.json();
 
     // Lấy câu trả lời từ AI (Google Gemini format)
@@ -44,7 +64,7 @@ export default async function handler(request, response) {
 
     response.status(200).json({ reply: aiMessage });
   } catch (error) {
-    console.error('Error calling Gemini API:', error);
-    response.status(500).json({ error: 'Something went wrong' });
+    console.error('Error in proxy:', error);
+    response.status(500).json({ error: 'Đã xảy ra lỗi. Vui lòng kiểm tra log trên Vercel.' });
   }
 }
