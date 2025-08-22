@@ -15,11 +15,16 @@ export default async function handler(request, response) {
   }
 
   try {
-    const { input_text } = request.body;
+    // Flexible input parsing
+    const input_text =
+      request.body?.input_text ||
+      request.body?.text ||
+      request.body?.message ||
+      '';
 
-    if (!input_text || input_text.trim() === '') {
+    if (!input_text.trim()) {
       return response.status(400).json({
-        error: 'input_text is required.',
+        error: 'Missing input. Please provide input_text, text, or message.',
       });
     }
 
@@ -73,7 +78,7 @@ ${input_text}
         body: JSON.stringify({
           contents: [
             {
-              parts: [{ text: combinedPrompt }], // Send the combined prompt
+              parts: [{ text: combinedPrompt }],
             },
           ],
         }),
